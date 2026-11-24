@@ -105,6 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Coin
   spinSpeed: 90
+  chime: {fileID: 8300000, guid: ef8b6b4897527054598e69f236f3b9cd, type: 3}
 --- !u!135 &-8008548811401319920
 SphereCollider:
   m_ObjectHideFlags: 0

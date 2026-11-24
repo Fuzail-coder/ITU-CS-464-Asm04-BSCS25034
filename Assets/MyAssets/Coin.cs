@@ -1,9 +1,10 @@
 using UnityEngine;
+using static UnityEngine.Rendering.DebugUI;
 
 public class Coin : MonoBehaviour
 {
     [SerializeField] float spinSpeed = 90f;
-
+    [SerializeField] AudioClip chime;
     bool collected;
 
     void Update()
@@ -15,7 +16,7 @@ public class Coin : MonoBehaviour
     {
         if (collected || !other.CompareTag("Player")) return;
         collected = true;
-
+        AudioSource.PlayClipAtPoint(chime, transform.position);
         GameManager.Instance.AddScore(1);
         Destroy(gameObject);
     }

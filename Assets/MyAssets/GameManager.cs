@@ -1,13 +1,26 @@
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
-// Lecture 06's GameManager, with lives, a respawn, a way to lose and a level timer.
 public class GameManager : MonoBehaviour
 {
-    
     public static GameManager Instance { get; private set; }
+
+    [Header("Menus")]
+    [SerializeField] GameObject winFirstButton;
+    [SerializeField] GameObject loseFirstButton;
+    [SerializeField] GameObject winPanel;
+    [SerializeField] GameObject losePanel;
+    [SerializeField] TMP_Text winTitle;
+
+    [Header("Loading")]
+    [SerializeField] GameObject loadingScreen;
+    [SerializeField] Image bar;
+
+    [Header("Game")]
     [SerializeField] int maxLives = 5;
     [SerializeField] int targetScore = 10;
     [SerializeField] int lives = 3;
@@ -17,20 +30,25 @@ public class GameManager : MonoBehaviour
     [SerializeField] Transform respawnPoint;
     [SerializeField] TMP_Text scoreText;
     [SerializeField] TMP_Text livesText;
-    [SerializeField] GameObject winPanel;
-    [SerializeField] GameObject losePanel;
-    [SerializeField] TMP_Text winTitle;   // the "Congratulations! You Win" text in WinPanel
 
     [Header("Timer")]
-    [SerializeField] float timeLimit = 60f;   // seconds; set 0 for no timer
+    [SerializeField] float timeLimit = 60f;
     [SerializeField] TMP_Text timerText;
-    [Header("Heart (spawns when 1 life is left)")]
+
+    [Header("Heart")]
     [SerializeField] GameObject heartPrefab;
     [SerializeField] Transform[] heartSpawnPoints;
+
+    const int LastLevelIndex = 5;
+    const int CreditsIndex = 6;
+
     GameObject heart;
     int score;
     float timeLeft;
     bool finished;
+    bool loading;
+
+    public bool Finished => finished;
 
     void Awake() => Instance = this;
 
@@ -50,7 +68,7 @@ public class GameManager : MonoBehaviour
         {
             timeLeft = 0f;
             UpdateTimerUI();
-            Lose();   // time ran out
+            Lose();
             return;
         }
         UpdateTimerUI();
@@ -60,36 +78,42 @@ public class GameManager : MonoBehaviour
     {
         if (timerText == null) return;
 
-        if (timeLimit <= 0f) { timerText.text = ""; return; }
+        if (timeLimit <= 0f)
+        {
+            timerText.text = "";
+            return;
+        }
 
         int minutes = Mathf.FloorToInt(timeLeft / 60f);
         int seconds = Mathf.FloorToInt(timeLeft % 60f);
         timerText.text = $"Time: {minutes:00}:{seconds:00}";
-        timerText.color = timeLeft <= 10f ? Color.red : Color.white;   // warning in the last 10 seconds
+        timerText.color = timeLeft <= 10f ? Color.red : Color.white;
     }
 
     public void AddScore(int amount)
     {
         if (finished) return;
-        
+
         score += amount;
         UpdateUI();
         if (score >= targetScore) Win();
     }
-   
+
     public void UpdateUI()
     {
         scoreText.text = $"Score: {score} / {targetScore}";
-        livesText.text = $"Lives: {lives}   Health: {Mathf.Max(player.Current, 0)} / {player.Max}";
+        livesText.text = $"Lives: {lives}";
     }
+
     void CheckHeart()
     {
-        if (lives != 1 || heart != null) return;   // only at 1 life, and only one heart at a time
+        if (lives != 1 || heart != null) return;
         if (heartPrefab == null || heartSpawnPoints.Length == 0) return;
 
         Transform p = heartSpawnPoints[Random.Range(0, heartSpawnPoints.Length)];
         heart = Instantiate(heartPrefab, p.position, Quaternion.identity);
     }
+
     public bool AddLife(int amount)
     {
         if (finished || lives >= maxLives) return false;
@@ -98,6 +122,7 @@ public class GameManager : MonoBehaviour
         UpdateUI();
         return true;
     }
+
     public void PlayerDied()
     {
         if (finished) return;
@@ -122,11 +147,11 @@ public class GameManager : MonoBehaviour
         if (finished) return;
         finished = true;
 
-        bool lastLevel = SceneManager.GetActiveScene().buildIndex == SceneManager.sceneCountInBuildSettings - 1;
-        if (lastLevel && winTitle != null)
-            winTitle.text = "You finished the game!";
+        bool lastLevel = SceneManager.GetActiveScene().buildIndex == LastLevelIndex;
+        if (winTitle != null) winTitle.text = lastLevel ? "You finished the game!" : "You Win";
 
         winPanel.SetActive(true);
+        EventSystem.current.SetSelectedGameObject(winFirstButton);
         Time.timeScale = 0f;
     }
 
@@ -136,23 +161,46 @@ public class GameManager : MonoBehaviour
         finished = true;
 
         losePanel.SetActive(true);
+        EventSystem.current.SetSelectedGameObject(loseFirstButton);
         Time.timeScale = 0f;
     }
 
-    public void Restart()   // the win and lose panels' button
-    {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
+    // ---- Scene loading (formerly LevelLoader) ----
+
+    public void Restart() => Load(SceneManager.GetActiveScene().buildIndex);
+    public void MainMenu() => Load(0);
 
     public void NextLevel()
     {
-        Time.timeScale = 1f;
-        int next = SceneManager.GetActiveScene().buildIndex + 1;
+        int i = SceneManager.GetActiveScene().buildIndex;
+        Load(i >= CreditsIndex ? 0 : i + 1);
+    }
 
-        if (next < SceneManager.sceneCountInBuildSettings)
-            SceneManager.LoadScene(next);
-        else
-            SceneManager.LoadScene(0);   // after the final screen, back to Level 1
+    public void Load(int index)
+    {
+        if (loading) return;
+        loading = true;
+        Time.timeScale = 1f;
+        StartCoroutine(LoadRoutine(index));
+    }
+
+    IEnumerator LoadRoutine(int index)
+    {
+        if (loadingScreen) loadingScreen.SetActive(true);
+
+        AsyncOperation op = SceneManager.LoadSceneAsync(index);
+        while (!op.isDone)
+        {
+            if (bar) bar.fillAmount = Mathf.Clamp01(op.progress / 0.9f);
+            yield return null;
+        }
+    }
+    public void Quit()
+    {
+    #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+    #else
+        Application.Quit();
+    #endif
     }
 }
