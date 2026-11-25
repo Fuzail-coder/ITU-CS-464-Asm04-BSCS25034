@@ -6,7 +6,6 @@ public class HealthBar : MonoBehaviour
     [SerializeField] Image fill;
     [SerializeField] Image lag;
     [SerializeField] Gradient colour;
-    [SerializeField] AudioClip hurtClip;
     [SerializeField] Health health;
     [SerializeField] float lagDelay = 0.4f;
     [SerializeField] float lagSpeed = 0.8f;

@@ -8,6 +8,7 @@ public class Hazard : MonoBehaviour
 
     [Header("A crusher: give it a rest time and it strikes on a cycle")]
     [SerializeField] float restTime = 2.4f;
+    [SerializeField] AudioClip hitSound;
     [SerializeField] float warnTime = 0.7f;
     [SerializeField] float strikeTime = 0.4f;
     [SerializeField] GameObject warning;
@@ -83,6 +84,9 @@ public class Hazard : MonoBehaviour
     {
         if (!other.TryGetComponent(out Health health)) return;
         if (!health.TakeDamage(damage)) return;
+
+        if (hitSound != null && SfxPlayer.Instance != null)
+            SfxPlayer.Instance.Play(hitSound);
 
         Rigidbody body = other.attachedRigidbody;
         if (body == null) return;

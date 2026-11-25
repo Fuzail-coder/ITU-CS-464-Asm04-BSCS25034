@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] Health player;
     [SerializeField] Transform respawnPoint;
     [SerializeField] TMP_Text scoreText;
-    [SerializeField] TMP_Text livesText;
+     
 
     [Header("Timer")]
     [SerializeField] float timeLimit = 60f;
@@ -102,7 +102,6 @@ public class GameManager : MonoBehaviour
     public void UpdateUI()
     {
         scoreText.text = $"Score: {score} / {targetScore}";
-        livesText.text = $"Lives: {lives}";
     }
 
     void CheckHeart()
